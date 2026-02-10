@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LionTechSolutions - Terminal de Gestión Pro (CRC)</title>
+    <title>LionTechSolutions - Terminal Global (CRC)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
@@ -90,23 +90,46 @@
             margin-bottom: 1rem;
         }
 
-        .badge {
-            font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-
-        .badge-top { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
         .hidden-section { display: none; }
         
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--neon-gold); border-radius: 10px; }
+
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--dark-bg); z-index: 100; display: flex;
+            align-items: center; justify-content: center; flex-direction: column;
+        }
+
+        .db-error-box {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 20px;
+            margin-top: 1rem;
+            color: #ff8888;
+            font-size: 0.85rem;
+        }
+
+        pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 0.7rem;
+            margin-top: 10px;
+            color: #00ff00;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
+
+    <div id="loader">
+        <div class="text-yellow-500 animate-pulse font-bold tracking-widest text-xl uppercase text-center mb-4">
+            Sincronizando con la Nube...
+        </div>
+    </div>
 
     <div id="canvas-container">
         <canvas id="nebula"></canvas>
@@ -117,21 +140,42 @@
         <div class="flex flex-col items-center mb-6">
             <img src="https://flxpuiwjivmahkzwjhdf.supabase.co/storage/v1/object/public/fab1/LionTech_Solutions-removebg-preview.png" 
                  alt="Logo LionTech" class="w-32 h-auto mb-4 drop-shadow-[0_0_10px_rgba(255,204,0,0.5)]">
-            <h1 class="neon-title text-xl font-bold tracking-widest text-center">LIONTECH SOLUTIONS</h1>
+            <h1 class="neon-title text-xl font-bold tracking-widest text-center uppercase">LionTech Solutions</h1>
         </div>
 
         <form onsubmit="handleAuth(event)">
             <div class="mb-4">
                 <label class="block text-[10px] text-yellow-500 mb-1 uppercase tracking-widest font-bold">Usuario / ID Terminal</label>
-                <input type="text" id="username" class="input-field w-full" placeholder="Nombre de usuario" required>
+                <input type="text" id="username" class="input-field w-full" placeholder="Usuario" required autocomplete="username">
             </div>
             <div class="mb-6">
                 <label class="block text-[10px] text-yellow-500 mb-1 uppercase tracking-widest font-bold">Clave de Acceso</label>
-                <input type="password" id="password" class="input-field w-full" placeholder="••••" required>
+                <input type="password" id="password" class="input-field w-full" placeholder="••••" required autocomplete="current-password">
             </div>
-            <button type="submit" class="btn-lion w-full py-3">Entrar al Sistema</button>
+            <button type="submit" class="btn-lion w-full py-3">Iniciar Sesión</button>
         </form>
         <p id="loginMsg" class="text-center mt-4 text-xs font-bold uppercase"></p>
+        
+        <!-- Alerta de Configuración Necesaria -->
+        <div id="dbTableAlert" class="hidden-section db-error-box mt-6 border-red-500/50">
+            <p class="font-bold mb-2 uppercase text-xs">⚠️ Requiere Configuración en Supabase</p>
+            <p class="mb-2">La tabla <b>'partners'</b> no se encuentra. Para solucionar esto:</p>
+            <ol class="list-decimal list-inside text-[11px] space-y-2 mb-4">
+                <li>Ve a tu panel de <a href="https://supabase.com/dashboard" target="_blank" class="underline text-white">Supabase</a>.</li>
+                <li>Entra en <b>"SQL Editor"</b>.</li>
+                <li>Copia y pega este código y dale a <b>"Run"</b>:</li>
+            </ol>
+            <pre id="sqlCode">CREATE TABLE partners (
+  id bigint primary key,
+  name text not null,
+  pass text not null,
+  recommendations jsonb default '[]'::jsonb
+);
+
+ALTER TABLE partners ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
+            <button onclick="copySQL()" class="mt-2 text-[10px] bg-white/10 px-3 py-1 rounded uppercase font-bold hover:bg-white/20">Copiar Código SQL</button>
+        </div>
     </div>
 
     <!-- Admin Dashboard UI -->
@@ -139,9 +183,9 @@
         <div class="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
             <div>
                 <h2 class="neon-title text-lg font-bold">CONTROL MAESTRO</h2>
-                <p class="text-[10px] text-gray-400 tracking-[0.2em]">ADMINISTRACIÓN CENTRAL (CRC)</p>
+                <p id="connStatus" class="text-[10px] text-green-500 tracking-[0.2em] font-bold uppercase">● Sistema Global Activo</p>
             </div>
-            <button onclick="logout()" class="text-[10px] bg-red-500/10 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500/20 font-bold uppercase transition-all">Desconectar</button>
+            <button onclick="logout()" class="text-[10px] bg-red-500/10 text-red-500 px-4 py-2 rounded-lg font-bold uppercase hover:bg-red-500/20 transition-all">Desconectar</button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -149,84 +193,139 @@
                 <h3 class="text-xs text-yellow-500 mb-4 uppercase font-bold tracking-widest">Registrar Nuevo Socio</h3>
                 <div class="flex flex-col gap-3">
                     <input type="text" id="newPartnerName" class="input-field" placeholder="Nombre de usuario">
-                    <input type="text" id="newPartnerPass" class="input-field" placeholder="Contraseña para el socio">
-                    <button onclick="addPartner()" class="btn-lion py-2 text-xs">Añadir Socio</button>
+                    <input type="text" id="newPartnerPass" class="input-field" placeholder="Contraseña">
+                    <button onclick="addPartner()" class="btn-lion py-2 text-xs">Crear Socio en Nube</button>
                 </div>
             </div>
-            
             <div class="bg-yellow-500/5 p-6 rounded-2xl border border-yellow-500/10 flex flex-col justify-center text-center">
-                <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Total Comisiones Pendientes</p>
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Comisiones Totales (Red)</p>
                 <h4 id="totalCommissions" class="text-3xl font-bold text-yellow-500">₡0</h4>
             </div>
         </div>
-
-        <div id="partnersList"></div>
+        <div id="partnersList" class="space-y-4"></div>
     </div>
 
     <!-- Partner Dashboard UI -->
     <div class="glass-card hidden-section" id="partnerPanel">
         <div class="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
             <div>
-                <h2 class="neon-title text-lg font-bold uppercase" id="partnerWelcomeName">BIENVENIDO SOCIO</h2>
-                <p class="text-[10px] text-gray-400 tracking-[0.2em]">PANEL DE RECOMENDACIONES (CRC)</p>
+                <h2 class="neon-title text-lg font-bold uppercase" id="partnerWelcomeName">SOCIO</h2>
+                <p class="text-[10px] text-gray-400 tracking-[0.2em] uppercase">Tus Comisiones Globales</p>
             </div>
-            <button onclick="logout()" class="text-[10px] bg-red-500/10 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500/20 font-bold uppercase transition-all">Cerrar Sesión</button>
+            <button onclick="logout()" class="text-[10px] bg-red-500/10 text-red-500 px-4 py-2 rounded-lg font-bold uppercase">Cerrar Sesión</button>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div class="bg-yellow-500/5 p-8 rounded-3xl border border-yellow-500/20 flex flex-col items-center justify-center">
-                <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Tus Comisiones Ganadas</p>
+            <div class="bg-yellow-500/5 p-8 rounded-3xl border border-yellow-500/20 flex flex-col items-center justify-center text-center">
+                <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Monto Acumulado</p>
                 <h4 id="myCommissions" class="text-5xl font-bold text-yellow-500">₡0</h4>
-                <p class="text-[10px] text-green-400 mt-4 font-bold uppercase tracking-widest">Tarifa: 15% por venta</p>
             </div>
-            
             <div class="bg-white/5 p-8 rounded-3xl border border-white/10">
-                <h3 class="text-xs text-yellow-500 mb-2 uppercase font-bold tracking-widest">Información</h3>
-                <p class="text-sm text-gray-400 leading-relaxed">
-                    Tus recomendaciones son registradas por el administrador. Aquí podrás ver el estado de tus ganancias en tiempo real. Si tienes dudas, contacta al soporte técnico.
-                </p>
+                <h3 class="text-xs text-yellow-500 mb-2 uppercase font-bold tracking-widest">Estado</h3>
+                <p class="text-sm text-gray-400 italic">"Los datos se sincronizan entre todos los dispositivos vinculados a LionTech."</p>
             </div>
         </div>
-
         <div class="bg-black/20 rounded-3xl p-6 border border-white/5">
-            <h3 class="text-xs text-yellow-500 uppercase font-bold tracking-widest mb-4">Tu Historial de Ventas</h3>
-            <div id="partnerHistory" class="space-y-2 max-h-64 overflow-y-auto pr-2">
-                <!-- Ventas del socio -->
-            </div>
+            <h3 class="text-xs text-yellow-500 uppercase font-bold tracking-widest mb-4">Registro de Ventas</h3>
+            <div id="partnerHistory" class="space-y-2 max-h-64 overflow-y-auto pr-2"></div>
         </div>
     </div>
 
     <script>
+        // CONFIGURACIÓN SUPABASE
+        const SB_URL = "https://flxpuiwjivmahkzwjhdf.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZseHB1aXdqaXZtYWhrendqaGRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNDQwNjcsImV4cCI6MjA4NTkyMDA2N30.nKju70hv9OcBPfIv0BGrCN1jzntdXANRT3pJVbZHzxs";
+        
+        const _supabase = supabase.createClient(SB_URL, SB_KEY);
+
         const ADMIN_CREDENTIALS = { user: 'LTS-L10N2', pass: '2004' };
-        let partners = JSON.parse(localStorage.getItem('lts_crc_v1')) || [];
+        let partners = [];
         let currentLoggedPartner = null;
 
-        function formatCRC(amount) {
-            return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);
+        const formatCRC = (amount) => new Intl.NumberFormat('es-CR', { 
+            style: 'currency', currency: 'CRC', minimumFractionDigits: 0 
+        }).format(amount);
+
+        async function loadData() {
+            const loader = document.getElementById('loader');
+            const tableAlert = document.getElementById('dbTableAlert');
+            
+            loader.style.display = 'flex';
+            tableAlert.classList.add('hidden-section');
+            
+            try {
+                const { data, error } = await _supabase.from('partners').select('*');
+                
+                if (error) {
+                    if (error.code === 'PGRST205' || error.message.includes('partners')) {
+                        tableAlert.classList.remove('hidden-section');
+                    }
+                    throw error;
+                }
+
+                partners = data || [];
+                localStorage.setItem('lts_crc_sync_final', JSON.stringify(partners));
+                updateConnectionStatus(true);
+            } catch (err) {
+                console.error("Error de carga:", err);
+                partners = JSON.parse(localStorage.getItem('lts_crc_sync_final')) || [];
+                updateConnectionStatus(false);
+            } finally {
+                loader.style.display = 'none';
+                refreshUI();
+            }
         }
 
-        function handleAuth(e) {
+        function updateConnectionStatus(online) {
+            const status = document.getElementById('connStatus');
+            if(status) {
+                status.innerText = online ? "● Nube Sincronizada" : "● Offline / Sin Tabla";
+                status.className = online ? "text-[10px] text-green-500 tracking-[0.2em] font-bold uppercase" : "text-[10px] text-red-500 tracking-[0.2em] font-bold uppercase";
+            }
+        }
+
+        async function saveData(partnerObj) {
+            try {
+                const { error } = await _supabase.from('partners').upsert({
+                    id: partnerObj.id,
+                    name: partnerObj.name,
+                    pass: partnerObj.pass,
+                    recommendations: partnerObj.recommendations
+                });
+                if (error) throw error;
+                updateConnectionStatus(true);
+            } catch (err) {
+                console.error("Error al guardar:", err);
+                updateConnectionStatus(false);
+            }
+            localStorage.setItem('lts_crc_sync_final', JSON.stringify(partners));
+            refreshUI();
+        }
+
+        function refreshUI() {
+            if (currentLoggedPartner) renderPartnerView();
+            const isAdminVisible = !document.getElementById('adminPanel').classList.contains('hidden-section');
+            if (isAdminVisible) renderAdminView();
+        }
+
+        async function handleAuth(e) {
             e.preventDefault();
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value.trim();
             const msg = document.getElementById('loginMsg');
 
-            // Intento Admin
             if (u === ADMIN_CREDENTIALS.user && p === ADMIN_CREDENTIALS.pass) {
                 showAdminPanel();
                 return;
             }
 
-            // Intento Socio
             const partner = partners.find(ptr => ptr.name === u && ptr.pass === p);
             if (partner) {
                 currentLoggedPartner = partner;
                 showPartnerPanel();
                 return;
             }
-
-            msg.innerText = "CREDENCIALES INVÁLIDAS";
-            msg.style.color = "#f87171";
+            msg.innerText = "ACCESO DENEGADO";
+            msg.style.color = "#ff4444";
         }
 
         function showAdminPanel() {
@@ -251,18 +350,17 @@
             partners.forEach((p) => {
                 const pComm = (p.recommendations || []).reduce((acc, r) => acc + (r.amount * 0.15), 0);
                 totalComm += pComm;
-
                 const div = document.createElement('div');
                 div.className = 'partner-card';
                 div.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
                         <div>
                             <span class="text-lg font-bold text-yellow-500 uppercase">${p.name}</span>
-                            <p class="text-[10px] text-gray-500">Clave: ${p.pass}</p>
+                            <p class="text-[9px] text-gray-500 font-mono">ID: ${p.id}</p>
                         </div>
                         <div class="text-right">
                             <p class="text-xl font-bold text-white">${formatCRC(pComm)}</p>
-                            <button onclick="removePartner(${p.id})" class="text-[10px] text-red-400 font-bold uppercase">Eliminar</button>
+                            <button onclick="removePartner(${p.id})" class="text-[10px] text-red-500 font-bold uppercase hover:underline">Eliminar Global</button>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
@@ -270,104 +368,128 @@
                         <select id="type-${p.id}" class="input-field text-xs">
                             <option value="Reparación">Reparación</option>
                             <option value="Bloqueo">Bloqueo</option>
+                            <option value="Venta">Venta</option>
+                            <option value="Accesorio">Accesorio</option>
                         </select>
                         <input type="number" id="amt-${p.id}" placeholder="Monto ₡" class="input-field text-xs">
-                        <button onclick="addRecommendation(${p.id})" class="btn-lion text-[10px]">Registrar</button>
+                        <button onclick="addRecommendation(${p.id})" class="btn-lion text-[10px] py-2">Registrar</button>
                     </div>
                 `;
                 list.appendChild(div);
             });
             document.getElementById('totalCommissions').innerText = formatCRC(totalComm);
-            localStorage.setItem('lts_crc_v1', JSON.stringify(partners));
         }
 
         function renderPartnerView() {
-            if (!currentLoggedPartner) return;
-            
-            // Actualizar nombre
-            document.getElementById('partnerWelcomeName').innerText = `HOLA, ${currentLoggedPartner.name}`;
-            
-            // Calcular mi comisión
-            const myComm = (currentLoggedPartner.recommendations || []).reduce((acc, r) => acc + (r.amount * 0.15), 0);
+            const p = partners.find(x => x.id === currentLoggedPartner.id);
+            if (!p) return;
+            document.getElementById('partnerWelcomeName').innerText = `HOLA, ${p.name}`;
+            const myComm = (p.recommendations || []).reduce((acc, r) => acc + (r.amount * 0.15), 0);
             document.getElementById('myCommissions').innerText = formatCRC(myComm);
             
-            // Renderizar mi historial
             const history = document.getElementById('partnerHistory');
-            history.innerHTML = '';
+            history.innerHTML = p.recommendations.length ? '' : '<p class="text-gray-600 text-xs italic text-center">Sin actividad en la nube.</p>';
             
-            if (currentLoggedPartner.recommendations.length === 0) {
-                history.innerHTML = '<p class="text-gray-600 text-xs italic">Aún no tienes ventas registradas.</p>';
-            } else {
-                [...currentLoggedPartner.recommendations].reverse().forEach(r => {
-                    const item = document.createElement('div');
-                    item.className = 'flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5';
-                    item.innerHTML = `
-                        <span>
-                            <b class="text-yellow-500 text-sm">${r.client}</b>
-                            <span class="text-[10px] text-gray-500 ml-2">(${r.type})</span>
-                        </span>
-                        <div class="text-right">
-                            <span class="text-xs text-gray-400 block">${r.date}</span>
-                            <span class="text-green-400 font-bold text-sm">+ ${formatCRC(r.amount * 0.15)}</span>
-                        </div>
-                    `;
-                    history.appendChild(item);
-                });
-            }
+            [...p.recommendations].reverse().forEach(r => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/10 transition-all';
+                item.innerHTML = `
+                    <div class="flex flex-col">
+                        <b class="text-yellow-500 text-sm uppercase">${r.client}</b>
+                        <span class="text-[9px] text-gray-500 uppercase">${r.type} | ${r.date}</span>
+                    </div>
+                    <span class="text-green-400 font-bold text-sm">${formatCRC(r.amount * 0.15)}</span>
+                `;
+                history.appendChild(item);
+            });
         }
 
-        function addPartner() {
+        async function addPartner() {
             const name = document.getElementById('newPartnerName');
             const pass = document.getElementById('newPartnerPass');
             if (!name.value || !pass.value) return;
-            partners.push({ id: Date.now(), name: name.value.trim(), pass: pass.value.trim(), recommendations: [] });
+            
+            const newPartner = { 
+                id: Math.floor(Date.now() / 1000), 
+                name: name.value.trim(), 
+                pass: pass.value.trim(), 
+                recommendations: [] 
+            };
+            
+            partners.push(newPartner);
             name.value = ''; pass.value = '';
-            renderAdminView();
+            await saveData(newPartner);
         }
 
-        function addRecommendation(partnerId) {
+        async function addRecommendation(partnerId) {
             const client = document.getElementById(`client-${partnerId}`).value;
             const type = document.getElementById(`type-${partnerId}`).value;
             const amount = parseFloat(document.getElementById(`amt-${partnerId}`).value);
+            
             if (!client || isNaN(amount)) return;
             
             const p = partners.find(ptr => ptr.id === partnerId);
             if (p) {
                 p.recommendations.push({ 
-                    client, type, amount, date: new Date().toLocaleDateString('es-CR') 
+                    client: client.trim(), 
+                    type, 
+                    amount, 
+                    date: new Date().toLocaleDateString('es-CR') 
                 });
-                renderAdminView();
+                await saveData(p);
             }
         }
 
-        function removePartner(id) {
-            if(confirm("¿Eliminar socio?")) { partners = partners.filter(p => p.id !== id); renderAdminView(); }
+        async function removePartner(id) {
+            if(confirm("¿Eliminar permanentemente de todos los teléfonos?")) {
+                try {
+                    await _supabase.from('partners').delete().eq('id', id);
+                    partners = partners.filter(p => p.id !== id);
+                    localStorage.setItem('lts_crc_sync_final', JSON.stringify(partners));
+                    refreshUI();
+                } catch (e) { console.error(e); }
+            }
         }
 
-        // Nebula Animation
+        function copySQL() {
+            const code = document.getElementById('sqlCode').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("¡Código SQL copiado! Pégalo en el SQL Editor de Supabase y dale a RUN.");
+        }
+
         const canvas = document.getElementById('nebula');
         const ctx = canvas.getContext('2d');
         let dots = [];
-        function init() {
+        function initCanvas() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            dots = Array.from({length: 40}, () => ({
+            dots = Array.from({length: 30}, () => ({
                 x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-                vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2, s: Math.random() * 2
+                vx: (Math.random() - 0.5) * 0.1, vy: (Math.random() - 0.5) * 0.1, s: Math.random() * 2
             }));
         }
-        function draw() {
+        function drawCanvas() {
             ctx.clearRect(0,0,canvas.width, canvas.height);
-            ctx.fillStyle = "rgba(255, 204, 0, 0.1)";
+            ctx.fillStyle = "rgba(255, 204, 0, 0.05)";
             dots.forEach(d => {
                 d.x += d.vx; d.y += d.vy;
                 if(d.x < 0 || d.x > canvas.width) d.vx *= -1;
                 if(d.y < 0 || d.y > canvas.height) d.vy *= -1;
                 ctx.beginPath(); ctx.arc(d.x, d.y, d.s, 0, Math.PI*2); ctx.fill();
             });
-            requestAnimationFrame(draw);
+            requestAnimationFrame(drawCanvas);
         }
-        window.addEventListener('resize', init);
-        init(); draw();
+
+        window.onload = async () => { 
+            initCanvas(); 
+            drawCanvas(); 
+            await loadData(); 
+        };
+        window.addEventListener('resize', initCanvas);
     </script>
 </body>
 </html>
