@@ -101,25 +101,22 @@
             align-items: center; justify-content: center; flex-direction: column;
         }
 
-        .db-error-box {
-            background: rgba(255, 0, 0, 0.1);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            padding: 1.5rem;
+        .status-badge {
+            font-size: 10px;
+            padding: 2px 8px;
             border-radius: 20px;
-            margin-top: 1rem;
-            color: #ff8888;
-            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: bold;
         }
 
-        pre {
-            background: #000;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: left;
-            font-size: 0.7rem;
-            margin-top: 10px;
-            color: #00ff00;
-            overflow-x: auto;
+        .realtime-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            background-color: #4ade80;
+            box-shadow: 0 0 10px #4ade80;
         }
     </style>
 </head>
@@ -127,7 +124,7 @@
 
     <div id="loader">
         <div class="text-yellow-500 animate-pulse font-bold tracking-widest text-xl uppercase text-center mb-4">
-            Sincronizando con la Nube...
+            LionTech Global Sync...
         </div>
     </div>
 
@@ -152,53 +149,35 @@
                 <label class="block text-[10px] text-yellow-500 mb-1 uppercase tracking-widest font-bold">Clave de Acceso</label>
                 <input type="password" id="password" class="input-field w-full" placeholder="••••" required autocomplete="current-password">
             </div>
-            <button type="submit" class="btn-lion w-full py-3">Iniciar Sesión</button>
+            <button type="submit" class="btn-lion w-full py-3">Entrar al Sistema</button>
         </form>
         <p id="loginMsg" class="text-center mt-4 text-xs font-bold uppercase"></p>
-        
-        <!-- Alerta de Configuración Necesaria -->
-        <div id="dbTableAlert" class="hidden-section db-error-box mt-6 border-red-500/50">
-            <p class="font-bold mb-2 uppercase text-xs">⚠️ Requiere Configuración en Supabase</p>
-            <p class="mb-2">La tabla <b>'partners'</b> no se encuentra. Para solucionar esto:</p>
-            <ol class="list-decimal list-inside text-[11px] space-y-2 mb-4">
-                <li>Ve a tu panel de <a href="https://supabase.com/dashboard" target="_blank" class="underline text-white">Supabase</a>.</li>
-                <li>Entra en <b>"SQL Editor"</b>.</li>
-                <li>Copia y pega este código y dale a <b>"Run"</b>:</li>
-            </ol>
-            <pre id="sqlCode">CREATE TABLE partners (
-  id bigint primary key,
-  name text not null,
-  pass text not null,
-  recommendations jsonb default '[]'::jsonb
-);
-
-ALTER TABLE partners ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
-            <button onclick="copySQL()" class="mt-2 text-[10px] bg-white/10 px-3 py-1 rounded uppercase font-bold hover:bg-white/20">Copiar Código SQL</button>
-        </div>
     </div>
 
     <!-- Admin Dashboard UI -->
     <div class="glass-card hidden-section" id="adminPanel">
         <div class="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
             <div>
-                <h2 class="neon-title text-lg font-bold">CONTROL MAESTRO</h2>
-                <p id="connStatus" class="text-[10px] text-green-500 tracking-[0.2em] font-bold uppercase">● Sistema Global Activo</p>
+                <h2 class="neon-title text-lg font-bold">TERMINAL MAESTRA</h2>
+                <div class="flex items-center gap-2">
+                    <span class="realtime-indicator"></span>
+                    <p id="connStatus" class="text-[10px] tracking-[0.2em] font-bold uppercase text-green-400">En Tiempo Real</p>
+                </div>
             </div>
-            <button onclick="logout()" class="text-[10px] bg-red-500/10 text-red-500 px-4 py-2 rounded-lg font-bold uppercase hover:bg-red-500/20 transition-all">Desconectar</button>
+            <button onclick="logout()" class="text-[10px] bg-red-500/10 text-red-500 px-4 py-2 rounded-lg font-bold uppercase">Salir</button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="bg-white/5 p-6 rounded-2xl border border-white/5">
-                <h3 class="text-xs text-yellow-500 mb-4 uppercase font-bold tracking-widest">Registrar Nuevo Socio</h3>
+                <h3 class="text-xs text-yellow-500 mb-4 uppercase font-bold tracking-widest">Añadir Socio Global</h3>
                 <div class="flex flex-col gap-3">
-                    <input type="text" id="newPartnerName" class="input-field" placeholder="Nombre de usuario">
-                    <input type="text" id="newPartnerPass" class="input-field" placeholder="Contraseña">
-                    <button onclick="addPartner()" class="btn-lion py-2 text-xs">Crear Socio en Nube</button>
+                    <input type="text" id="newPartnerName" class="input-field" placeholder="Nombre">
+                    <input type="text" id="newPartnerPass" class="input-field" placeholder="Password">
+                    <button id="addPartnerBtn" onclick="addPartner()" class="btn-lion py-2 text-xs">Registrar en Nube</button>
                 </div>
             </div>
             <div class="bg-yellow-500/5 p-6 rounded-2xl border border-yellow-500/10 flex flex-col justify-center text-center">
-                <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Comisiones Totales (Red)</p>
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Comisiones Red LionTech</p>
                 <h4 id="totalCommissions" class="text-3xl font-bold text-yellow-500">₡0</h4>
             </div>
         </div>
@@ -210,22 +189,25 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
         <div class="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
             <div>
                 <h2 class="neon-title text-lg font-bold uppercase" id="partnerWelcomeName">SOCIO</h2>
-                <p class="text-[10px] text-gray-400 tracking-[0.2em] uppercase">Tus Comisiones Globales</p>
+                <div class="flex items-center gap-2">
+                    <span class="realtime-indicator"></span>
+                    <p class="text-[10px] text-green-400 tracking-[0.2em] uppercase font-bold">Sincronizado</p>
+                </div>
             </div>
             <button onclick="logout()" class="text-[10px] bg-red-500/10 text-red-500 px-4 py-2 rounded-lg font-bold uppercase">Cerrar Sesión</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="bg-yellow-500/5 p-8 rounded-3xl border border-yellow-500/20 flex flex-col items-center justify-center text-center">
-                <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Monto Acumulado</p>
+                <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Mi Saldo Acumulado</p>
                 <h4 id="myCommissions" class="text-5xl font-bold text-yellow-500">₡0</h4>
             </div>
             <div class="bg-white/5 p-8 rounded-3xl border border-white/10">
-                <h3 class="text-xs text-yellow-500 mb-2 uppercase font-bold tracking-widest">Estado</h3>
-                <p class="text-sm text-gray-400 italic">"Los datos se sincronizan entre todos los dispositivos vinculados a LionTech."</p>
+                <h3 class="text-xs text-yellow-500 mb-2 uppercase font-bold tracking-widest">Nube Activa</h3>
+                <p class="text-sm text-gray-400 italic">"Los cambios realizados por el Administrador aparecen aquí al instante."</p>
             </div>
         </div>
         <div class="bg-black/20 rounded-3xl p-6 border border-white/5">
-            <h3 class="text-xs text-yellow-500 uppercase font-bold tracking-widest mb-4">Registro de Ventas</h3>
+            <h3 class="text-xs text-yellow-500 uppercase font-bold tracking-widest mb-4">Mis Referidos y Ventas</h3>
             <div id="partnerHistory" class="space-y-2 max-h-64 overflow-y-auto pr-2"></div>
         </div>
     </div>
@@ -245,68 +227,73 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
             style: 'currency', currency: 'CRC', minimumFractionDigits: 0 
         }).format(amount);
 
+        // --- SISTEMA DE TIEMPO REAL ---
+        function setupRealtime() {
+            _supabase
+                .channel('db-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'partners' }, payload => {
+                    console.log('Cambio detectado en tiempo real:', payload);
+                    fetchInitialData(); // Recargar datos ante cualquier cambio remoto
+                })
+                .subscribe();
+        }
+
+        async function fetchInitialData() {
+            const { data, error } = await _supabase
+                .from('partners')
+                .select('*')
+                .order('id', { ascending: true });
+            
+            if (!error && data) {
+                partners = data;
+                localStorage.setItem('lts_cache', JSON.stringify(partners));
+                refreshUI();
+            }
+        }
+
         async function loadData() {
             const loader = document.getElementById('loader');
-            const tableAlert = document.getElementById('dbTableAlert');
-            
             loader.style.display = 'flex';
-            tableAlert.classList.add('hidden-section');
             
             try {
-                const { data, error } = await _supabase.from('partners').select('*');
-                
-                if (error) {
-                    if (error.code === 'PGRST205' || error.message.includes('partners')) {
-                        tableAlert.classList.remove('hidden-section');
-                    }
-                    throw error;
-                }
-
-                partners = data || [];
-                localStorage.setItem('lts_crc_sync_final', JSON.stringify(partners));
-                updateConnectionStatus(true);
+                await fetchInitialData();
+                setupRealtime(); // Activar escucha de cambios
             } catch (err) {
-                console.error("Error de carga:", err);
-                partners = JSON.parse(localStorage.getItem('lts_crc_sync_final')) || [];
-                updateConnectionStatus(false);
+                console.error("Error inicial:", err);
+                partners = JSON.parse(localStorage.getItem('lts_cache')) || [];
             } finally {
                 loader.style.display = 'none';
                 refreshUI();
             }
         }
 
-        function updateConnectionStatus(online) {
-            const status = document.getElementById('connStatus');
-            if(status) {
-                status.innerText = online ? "● Nube Sincronizada" : "● Offline / Sin Tabla";
-                status.className = online ? "text-[10px] text-green-500 tracking-[0.2em] font-bold uppercase" : "text-[10px] text-red-500 tracking-[0.2em] font-bold uppercase";
+        function refreshUI() {
+            if (currentLoggedPartner) {
+                // Actualizar el objeto del socio logueado con los nuevos datos de la nube
+                const updated = partners.find(p => p.id == currentLoggedPartner.id);
+                if (updated) currentLoggedPartner = updated;
+                renderPartnerView();
+            }
+            if (!document.getElementById('adminPanel').classList.contains('hidden-section')) {
+                renderAdminView();
             }
         }
 
         async function saveData(partnerObj) {
             try {
                 const { error } = await _supabase.from('partners').upsert({
-                    id: partnerObj.id,
+                    id: Number(partnerObj.id),
                     name: partnerObj.name,
                     pass: partnerObj.pass,
                     recommendations: partnerObj.recommendations
                 });
                 if (error) throw error;
-                updateConnectionStatus(true);
             } catch (err) {
-                console.error("Error al guardar:", err);
-                updateConnectionStatus(false);
+                alert("Error de conexión. Los datos podrían no haberse guardado.");
             }
-            localStorage.setItem('lts_crc_sync_final', JSON.stringify(partners));
-            refreshUI();
         }
 
-        function refreshUI() {
-            if (currentLoggedPartner) renderPartnerView();
-            const isAdminVisible = !document.getElementById('adminPanel').classList.contains('hidden-section');
-            if (isAdminVisible) renderAdminView();
-        }
-
+        // --- LÓGICA DE INTERFAZ ---
         async function handleAuth(e) {
             e.preventDefault();
             const u = document.getElementById('username').value.trim();
@@ -314,33 +301,23 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
             const msg = document.getElementById('loginMsg');
 
             if (u === ADMIN_CREDENTIALS.user && p === ADMIN_CREDENTIALS.pass) {
-                showAdminPanel();
+                document.getElementById('loginCard').classList.add('hidden-section');
+                document.getElementById('adminPanel').classList.remove('hidden-section');
+                renderAdminView();
                 return;
             }
 
             const partner = partners.find(ptr => ptr.name === u && ptr.pass === p);
             if (partner) {
                 currentLoggedPartner = partner;
-                showPartnerPanel();
+                document.getElementById('loginCard').classList.add('hidden-section');
+                document.getElementById('partnerPanel').classList.remove('hidden-section');
+                renderPartnerView();
                 return;
             }
             msg.innerText = "ACCESO DENEGADO";
             msg.style.color = "#ff4444";
         }
-
-        function showAdminPanel() {
-            document.getElementById('loginCard').classList.add('hidden-section');
-            document.getElementById('adminPanel').classList.remove('hidden-section');
-            renderAdminView();
-        }
-
-        function showPartnerPanel() {
-            document.getElementById('loginCard').classList.add('hidden-section');
-            document.getElementById('partnerPanel').classList.remove('hidden-section');
-            renderPartnerView();
-        }
-
-        function logout() { location.reload(); }
 
         function renderAdminView() {
             const list = document.getElementById('partnersList');
@@ -360,7 +337,7 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
                         </div>
                         <div class="text-right">
                             <p class="text-xl font-bold text-white">${formatCRC(pComm)}</p>
-                            <button onclick="removePartner(${p.id})" class="text-[10px] text-red-500 font-bold uppercase hover:underline">Eliminar Global</button>
+                            <button onclick="removePartner(${p.id})" class="text-[10px] text-red-500 font-bold uppercase hover:underline">Eliminar</button>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
@@ -369,7 +346,6 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
                             <option value="Reparación">Reparación</option>
                             <option value="Bloqueo">Bloqueo</option>
                             <option value="Venta">Venta</option>
-                            <option value="Accesorio">Accesorio</option>
                         </select>
                         <input type="number" id="amt-${p.id}" placeholder="Monto ₡" class="input-field text-xs">
                         <button onclick="addRecommendation(${p.id})" class="btn-lion text-[10px] py-2">Registrar</button>
@@ -381,24 +357,24 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
         }
 
         function renderPartnerView() {
-            const p = partners.find(x => x.id === currentLoggedPartner.id);
+            const p = currentLoggedPartner;
             if (!p) return;
             document.getElementById('partnerWelcomeName').innerText = `HOLA, ${p.name}`;
             const myComm = (p.recommendations || []).reduce((acc, r) => acc + (r.amount * 0.15), 0);
             document.getElementById('myCommissions').innerText = formatCRC(myComm);
             
             const history = document.getElementById('partnerHistory');
-            history.innerHTML = p.recommendations.length ? '' : '<p class="text-gray-600 text-xs italic text-center">Sin actividad en la nube.</p>';
+            history.innerHTML = p.recommendations.length ? '' : '<p class="text-gray-600 text-xs italic text-center">Sin ventas registradas.</p>';
             
             [...p.recommendations].reverse().forEach(r => {
                 const item = document.createElement('div');
-                item.className = 'flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/10 transition-all';
+                item.className = 'flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 mb-2';
                 item.innerHTML = `
                     <div class="flex flex-col">
                         <b class="text-yellow-500 text-sm uppercase">${r.client}</b>
                         <span class="text-[9px] text-gray-500 uppercase">${r.type} | ${r.date}</span>
                     </div>
-                    <span class="text-green-400 font-bold text-sm">${formatCRC(r.amount * 0.15)}</span>
+                    <span class="text-green-400 font-bold text-sm">+${formatCRC(r.amount * 0.15)}</span>
                 `;
                 history.appendChild(item);
             });
@@ -416,19 +392,20 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
                 recommendations: [] 
             };
             
-            partners.push(newPartner);
-            name.value = ''; pass.value = '';
             await saveData(newPartner);
+            name.value = ''; pass.value = '';
+            // El Realtime se encargará de actualizar la lista en todos los dispositivos
         }
 
         async function addRecommendation(partnerId) {
             const client = document.getElementById(`client-${partnerId}`).value;
             const type = document.getElementById(`type-${partnerId}`).value;
-            const amount = parseFloat(document.getElementById(`amt-${partnerId}`).value);
+            const amtIn = document.getElementById(`amt-${partnerId}`);
+            const amount = parseFloat(amtIn.value);
             
             if (!client || isNaN(amount)) return;
             
-            const p = partners.find(ptr => ptr.id === partnerId);
+            const p = partners.find(ptr => ptr.id == partnerId);
             if (p) {
                 p.recommendations.push({ 
                     client: client.trim(), 
@@ -437,31 +414,19 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
                     date: new Date().toLocaleDateString('es-CR') 
                 });
                 await saveData(p);
+                amtIn.value = ''; document.getElementById(`client-${partnerId}`).value = '';
             }
         }
 
         async function removePartner(id) {
-            if(confirm("¿Eliminar permanentemente de todos los teléfonos?")) {
-                try {
-                    await _supabase.from('partners').delete().eq('id', id);
-                    partners = partners.filter(p => p.id !== id);
-                    localStorage.setItem('lts_crc_sync_final', JSON.stringify(partners));
-                    refreshUI();
-                } catch (e) { console.error(e); }
+            if(confirm("¿Eliminar socio de la base de datos global?")) {
+                await _supabase.from('partners').delete().eq('id', id);
             }
         }
 
-        function copySQL() {
-            const code = document.getElementById('sqlCode').innerText;
-            const textarea = document.createElement('textarea');
-            textarea.value = code;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            alert("¡Código SQL copiado! Pégalo en el SQL Editor de Supabase y dale a RUN.");
-        }
+        function logout() { location.reload(); }
 
+        // Fondo animado
         const canvas = document.getElementById('nebula');
         const ctx = canvas.getContext('2d');
         let dots = [];
@@ -474,7 +439,7 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
         }
         function drawCanvas() {
             ctx.clearRect(0,0,canvas.width, canvas.height);
-            ctx.fillStyle = "rgba(255, 204, 0, 0.05)";
+            ctx.fillStyle = "rgba(255, 204, 0, 0.2)";
             dots.forEach(d => {
                 d.x += d.vx; d.y += d.vy;
                 if(d.x < 0 || d.x > canvas.width) d.vx *= -1;
@@ -484,11 +449,7 @@ CREATE POLICY "Public Access" ON partners FOR ALL USING (true);</pre>
             requestAnimationFrame(drawCanvas);
         }
 
-        window.onload = async () => { 
-            initCanvas(); 
-            drawCanvas(); 
-            await loadData(); 
-        };
+        window.onload = () => { initCanvas(); drawCanvas(); loadData(); };
         window.addEventListener('resize', initCanvas);
     </script>
 </body>
