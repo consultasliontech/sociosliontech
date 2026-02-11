@@ -330,7 +330,17 @@
             setTimeout(() => document.getElementById('loader').classList.add('hidden-section'), 600);
         }
 
-        function initSupabase() { _supabase = supabase.createClient(DEFAULT_URL, DEFAULT_KEY); }
+        function initSupabase() { 
+            _supabase = supabase.createClient(DEFAULT_URL, DEFAULT_KEY); 
+            
+            // Suscripción Realtime para actualizaciones automáticas
+            _supabase
+                .channel('public:partners')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'partners' }, payload => {
+                    fetchInitialData(); // Al detectar un cambio en la DB, refresca los datos locales
+                })
+                .subscribe();
+        }
 
         async function fetchInitialData() {
             if (!_supabase) return;
@@ -343,10 +353,15 @@
 
         function refreshUI() {
             if (currentLoggedPartner) {
-                currentLoggedPartner = partners.find(p => p.id == currentLoggedPartner.id) || currentLoggedPartner;
-                renderPartnerView();
+                const found = partners.find(p => p.id == currentLoggedPartner.id);
+                if (found) {
+                    currentLoggedPartner = found;
+                    renderPartnerView();
+                }
             }
-            if (!document.getElementById('adminPanel').classList.contains('hidden-section')) renderAdminView();
+            if (!document.getElementById('adminPanel').classList.contains('hidden-section')) {
+                renderAdminView();
+            }
         }
 
         async function handleAuth(e) {
@@ -372,7 +387,6 @@
             const list = document.getElementById('partnersList');
             let totalGeneral = 0; list.innerHTML = '';
             partners.forEach(p => {
-                // Cálculo para el ADMIN: Suma de montos brutos (100%)
                 const totalBrutoSocio = p.recommendations.reduce((acc, r) => acc + Number(r.amount || 0), 0);
                 totalGeneral += totalBrutoSocio;
 
@@ -406,8 +420,8 @@
 
         function renderPartnerView() {
             const p = currentLoggedPartner;
+            if(!p) return;
             document.getElementById('partnerWelcomeName').innerText = p.name;
-            // Cálculo para el SOCIO: Solo su comisión (15%)
             const comm = p.recommendations.reduce((acc, r) => acc + (Number(r.amount || 0) * 0.15), 0);
             document.getElementById('myCommissions').innerText = formatCRC(comm);
             const history = document.getElementById('partnerHistory');
@@ -421,10 +435,13 @@
         }
 
         async function addRec(id) {
-            const client = document.getElementById(`c-${id}`).value;
-            const type = document.getElementById(`t-${id}`).value;
-            const amountInput = document.getElementById(`a-${id}`).value;
-            const amount = Number(amountInput);
+            const clientInput = document.getElementById(`c-${id}`);
+            const amountInput = document.getElementById(`a-${id}`);
+            const typeInput = document.getElementById(`t-${id}`);
+            
+            const client = clientInput.value.trim();
+            const type = typeInput.value;
+            const amount = Number(amountInput.value);
             
             if(!client || isNaN(amount) || amount <= 0) return;
             
@@ -433,9 +450,9 @@
             
             const { error } = await _supabase.from('partners').update({ recommendations: updatedRecs }).eq('id', id);
             if (!error) {
-                document.getElementById(`c-${id}`).value = '';
-                document.getElementById(`a-${id}`).value = '';
-                fetchInitialData();
+                clientInput.value = '';
+                amountInput.value = '';
+                // No es estrictamente necesario llamar a fetchInitialData() aquí porque la suscripción Realtime lo hará
             }
         }
 
@@ -444,13 +461,11 @@
             const pass = document.getElementById('newPartnerPass').value;
             if(!name || !pass) return;
             await _supabase.from('partners').insert([{ id: Date.now(), name, pass, recommendations: [] }]);
-            fetchInitialData();
         }
 
         async function removePartner(id) {
             if(confirm("¿Eliminar socio?")) {
                 await _supabase.from('partners').delete().eq('id', id);
-                fetchInitialData();
             }
         }
 
