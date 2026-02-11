@@ -230,11 +230,13 @@
     <div id="debugLog">Iniciando sistema...</div>
 
     <script>
-        // CONFIGURACIÓN SUPABASE - NUEVA API KEY
+        // CONFIGURACIÓN SUPABASE - CREDENCIALES ACTUALIZADAS
         const SB_URL = "https://flxpuiwjivmahkzwjhdf.supabase.co";
-        const SB_KEY = "sb_publishable_0-44Ngsm9s7yAqaiszXCxg_6O_Kg9Oa";
+        const SB_PUB_KEY = "sb_publishable_0-44Ngsm9s7yAqaiszXCxg_6O_Kg9Oa";
+        const SB_SEC_KEY = "sb_secret_Ebt_c_GkAH79WnvlhN7EBw_38nHDkoa"; // Secret Key incluida
         
-        const _supabase = supabase.createClient(SB_URL, SB_KEY);
+        // Inicialización con Public Key (estándar para apps cliente)
+        const _supabase = supabase.createClient(SB_URL, SB_PUB_KEY);
 
         const ADMIN_CREDENTIALS = { user: 'LTS-L10N2', pass: '2004' };
         let partners = [];
@@ -285,7 +287,7 @@
 
                 if (data) {
                     partners = data;
-                    localStorage.setItem('lts_cache_v4', JSON.stringify(partners));
+                    localStorage.setItem('lts_cache_v6', JSON.stringify(partners));
                     refreshUI();
                     log('Sincronización OK.');
                 }
@@ -301,7 +303,7 @@
                 setupRealtime();
             } catch (err) {
                 log('Usando caché local (offline)');
-                partners = JSON.parse(localStorage.getItem('lts_cache_v4')) || [];
+                partners = JSON.parse(localStorage.getItem('lts_cache_v6')) || [];
             } finally {
                 document.getElementById('loader').style.display = 'none';
                 refreshUI();
@@ -335,16 +337,16 @@
                 if (error) {
                     log('Error Supabase: ' + error.message);
                     if(error.message.includes('policy')) {
-                        alert("ERROR DE PERMISOS: Debes configurar las políticas RLS en Supabase para permitir 'insert/update' a usuarios anon.");
+                        alert("AVISO: Revisa las políticas RLS en Supabase para permitir acceso anónimo a la tabla 'partners'.");
                     }
                     throw error;
                 }
                 
                 log('Guardado Correcto.');
-                fetchInitialData(); // Refrescar tras guardar
+                fetchInitialData(); 
             } catch (err) {
-                console.error("Fallo definitivo:", err);
-                alert("ERROR CRÍTICO: " + (err.message || "Fallo de red"));
+                console.error("Fallo:", err);
+                alert("ERROR: " + (err.message || "Fallo de conexión"));
             } finally {
                 setSyncing(false);
             }
