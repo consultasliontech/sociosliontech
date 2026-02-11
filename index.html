@@ -77,6 +77,10 @@
             transition: 0.4s;
             text-transform: uppercase;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .btn-lion:hover:not(:disabled) {
@@ -106,7 +110,7 @@
 
         .hidden-section { display: none !important; }
         
-        /* LOADER MEJORADO */
+        /* LOADER */
         #loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%); 
@@ -186,10 +190,9 @@
 </head>
 <body>
 
-    <!-- Pantalla de Carga Élite -->
+    <!-- Pantalla de Carga -->
     <div id="loader">
         <img src="https://flxpuiwjivmahkzwjhdf.supabase.co/storage/v1/object/public/fab1/LionTech_Solutions-removebg-preview.png" class="loader-logo" alt="LionTech Logo">
-        
         <div class="loader-info">
             <div class="status-text" id="loaderStatus">INICIANDO SISTEMA...</div>
             <div class="progress-container">
@@ -268,26 +271,34 @@
         </div>
 
         <div class="motivation-box mb-8">
-            <p class="text-white font-bold text-sm">BONIFICACIÓN ACTIVA: Ganas el <span class="text-yellow-500">15% NETO</span> por recomendación.</p>
+            <p class="text-white font-bold text-sm uppercase tracking-tight">Estatus: <span class="text-yellow-500">Socio Activo 15%</span></p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="bg-yellow-500/5 p-8 rounded-3xl border border-yellow-500/20 flex flex-col items-center justify-center text-center">
-                <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Mis Ganancias</p>
-                <h4 id="myCommissions" class="text-5xl font-bold text-yellow-500">₡0</h4>
+                <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Mi Ganancia Acumulada</p>
+                <h4 id="myCommissions" class="text-5xl font-bold text-yellow-500 mb-6">₡0</h4>
+                
+                <!-- Botón de Retiro WhatsApp -->
+                <button onclick="withdrawVolume()" class="btn-lion w-full py-3 text-xs tracking-widest">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                    RETIRAR VOLUMEN
+                </button>
             </div>
+            
             <div class="bg-white/5 p-6 rounded-3xl border border-white/5">
-                <h3 class="text-xs text-yellow-500 mb-3 uppercase font-bold tracking-widest">Estrategia de Intermediario</h3>
+                <h3 class="text-xs text-yellow-500 mb-3 uppercase font-bold tracking-widest">Protocolo de Socio</h3>
                 <ul class="text-[11px] text-gray-300 space-y-2">
-                    <li>• Identifica fallas (pantallas, bloqueos, lentitud).</li>
-                    <li>• Ofrece solución rápida con garantía LionTech.</li>
-                    <li>• Reporta el cliente para asegurar tu comisión.</li>
+                    <li>• <b class="text-white">Reparación:</b> Ganas 15% del total cobrado.</li>
+                    <li>• <b class="text-white">Ventas:</b> Ganas 15% sobre el precio de lista.</li>
+                    <li>• <b class="text-white">Reportes:</b> Se registran máximo en 24h hábiles.</li>
+                    <li>• <b class="text-white">Pagos:</b> Solicítalos con el botón de WhatsApp.</li>
                 </ul>
             </div>
         </div>
 
         <div class="bg-black/20 rounded-3xl p-6 border border-white/5">
-            <h3 class="text-xs text-yellow-500 uppercase font-bold tracking-widest mb-4">Registro de Operaciones</h3>
+            <h3 class="text-xs text-yellow-500 uppercase font-bold tracking-widest mb-4">Registro Histórico</h3>
             <div id="partnerHistory" class="space-y-2 max-h-64 overflow-y-auto"></div>
         </div>
     </div>
@@ -295,6 +306,7 @@
     <script>
         const DEFAULT_URL = "https://ymacrmetlngaapfnwqqv.supabase.co";
         const DEFAULT_KEY = "sb_publishable_0-44Ngsm9s7yAqaiszXCxg_6O_Kg9Oa";
+        const WHATSAPP_CONTACT = "50670285433";
         let SB_URL = localStorage.getItem('LTS_SB_URL') || DEFAULT_URL;
         let SB_PUB_KEY = localStorage.getItem('LTS_SB_KEY') || DEFAULT_KEY;
         let _supabase = null;
@@ -304,33 +316,28 @@
 
         const formatCRC = (amount) => new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);
 
-        // --- SISTEMA DE CARGA PROFESIONAL ---
+        // --- LOADER ---
         async function runLoader() {
             const status = document.getElementById('loaderStatus');
             const progress = document.getElementById('loaderProgress');
             const percent = document.getElementById('loaderPercent');
-            
             const steps = [
                 { t: "CARGANDO SISTEMA DE SOCIOS...", p: 15 },
-                { t: "SINCRONIZANDO NODO CENTRAL...", p: 35 },
-                { t: "VERIFICANDO CREDENCIALES...", p: 55 },
-                { t: "DESPLEGANDO INTERFAZ...", p: 85 },
+                { t: "SINCRONIZANDO NODO CENTRAL...", p: 40 },
+                { t: "VERIFICANDO CREDENCIALES...", p: 65 },
                 { t: "ACCESO CONCEDIDO", p: 100 }
             ];
-
             for (let step of steps) {
                 status.innerText = step.t;
-                // Animación suave del porcentaje
                 let currentP = parseInt(percent.innerText);
                 while(currentP < step.p) {
                     currentP++;
                     percent.innerText = currentP + "%";
                     progress.style.width = currentP + "%";
-                    await new Promise(r => setTimeout(r, 15));
+                    await new Promise(r => setTimeout(r, 12));
                 }
-                await new Promise(r => setTimeout(r, 400));
+                await new Promise(r => setTimeout(r, 250));
             }
-
             const loader = document.getElementById('loader');
             loader.style.opacity = '0';
             setTimeout(() => loader.classList.add('hidden-section'), 1000);
@@ -391,15 +398,24 @@
                 const div = document.createElement('div');
                 div.className = 'partner-card';
                 div.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="font-bold text-yellow-500 uppercase">${p.name}</span>
-                        <span class="text-white font-bold">${formatCRC(comm)}</span>
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="font-bold text-yellow-500 uppercase block">${p.name}</span>
+                            <span class="text-[10px] text-gray-500">ID: ${p.id}</span>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <span class="text-white font-bold mb-1">${formatCRC(comm)}</span>
+                            <button onclick="removePartner(${p.id})" class="text-[9px] bg-red-600/10 text-red-500 px-2 py-1 rounded border border-red-500/20 hover:bg-red-500/20 transition-colors uppercase font-bold">
+                                Eliminar Nodo
+                            </button>
+                        </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                         <input type="text" id="c-${p.id}" placeholder="Cliente" class="input-field text-xs">
                         <select id="t-${p.id}" class="input-field text-xs">
                             <option value="Reparación">Reparación</option>
-                            <option value="Venta">Venta</option>
+                            <option value="Bloqueo/Software">Bloqueo/Software</option>
+                            <option value="Venta Equipo">Venta Equipo</option>
                         </select>
                         <input type="number" id="a-${p.id}" placeholder="Monto" class="input-field text-xs">
                         <button onclick="addRec(${p.id})" class="btn-lion text-[10px] py-2">Registrar</button>
@@ -425,12 +441,31 @@
             });
         }
 
+        // --- FUNCIÓN DE RETIRO WHATSAPP ---
+        function withdrawVolume() {
+            const p = currentLoggedPartner;
+            if (!p) return;
+            const commTotal = (p.recommendations || []).reduce((acc, r) => acc + (r.amount * 0.15), 0);
+            const message = `Hola LionTech Solutions, soy el Socio *${p.name}*. Solicito retirar mi ganancia acumulada en el sistema de socios: *${formatCRC(commTotal)}*`;
+            const url = `https://wa.me/${WHATSAPP_CONTACT}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
         async function addPartner() {
             const name = document.getElementById('newPartnerName').value;
             const pass = document.getElementById('newPartnerPass').value;
             if(!name || !pass) return;
             await _supabase.from('partners').insert([{ id: Date.now(), name, pass, recommendations: [] }]);
             fetchInitialData();
+            document.getElementById('newPartnerName').value = '';
+            document.getElementById('newPartnerPass').value = '';
+        }
+
+        async function removePartner(id) {
+            if(confirm("¿Desea eliminar este nodo de socio permanentemente?")) {
+                await _supabase.from('partners').delete().eq('id', id);
+                fetchInitialData();
+            }
         }
 
         async function addRec(id) {
@@ -464,6 +499,7 @@
             });
             requestAnimationFrame(drawCanvas);
         }
+        window.onresize = initCanvas;
         window.onload = () => { initCanvas(); drawCanvas(); loadSystem(); };
     </script>
 </body>
