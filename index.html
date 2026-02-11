@@ -77,9 +77,15 @@
             cursor: pointer;
         }
 
-        .btn-lion:hover {
+        .btn-lion:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(255, 204, 0, 0.3);
+        }
+
+        .btn-lion:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
         }
 
         .partner-card {
@@ -132,14 +138,34 @@
             max-width: 300px;
             pointer-events: none;
         }
+
+        #configModal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 200; display: none;
+            align-items: center; justify-content: center;
+        }
     </style>
 </head>
 <body>
 
+    <!-- Modal de Configuración Manual -->
+    <div id="configModal">
+        <div class="glass-card w-full max-w-md">
+            <h2 class="neon-title mb-4 text-center">CONFIGURAR NUBE</h2>
+            <p class="text-[10px] text-gray-400 mb-4 uppercase text-center">La clave actual es inválida o el proyecto cambió. Ingresa los datos de tu Supabase.</p>
+            <div class="space-y-3">
+                <input type="text" id="manualUrl" class="input-field w-full" placeholder="URL de Supabase (https://...)">
+                <input type="text" id="manualKey" class="input-field w-full" placeholder="Anon Public Key">
+                <button onclick="applyManualConfig()" class="btn-lion w-full py-2">Conectar Nube</button>
+            </div>
+            <button onclick="document.getElementById('configModal').style.display='none'" class="w-full text-[9px] mt-4 text-gray-500 uppercase">Cerrar</button>
+        </div>
+    </div>
+
     <div id="loader">
-        <div class="text-yellow-500 animate-pulse font-bold tracking-widest text-xl uppercase text-center mb-4 text-center">
+        <div class="text-yellow-500 animate-pulse font-bold tracking-widest text-xl uppercase text-center mb-4">
             LionTech Global Sync...<br>
-            <span class="text-[10px]">Verificando Conexión con Supabase</span>
+            <span id="loaderStatus" class="text-[10px]">Estableciendo enlace con la nube...</span>
         </div>
     </div>
 
@@ -167,6 +193,7 @@
             <button type="submit" class="btn-lion w-full py-3">Entrar al Sistema</button>
         </form>
         <p id="loginMsg" class="text-center mt-4 text-xs font-bold uppercase"></p>
+        <button onclick="document.getElementById('configModal').style.display='flex'" class="w-full text-[9px] text-gray-600 mt-4 uppercase hover:text-yellow-500">Ajustar Credenciales de Red</button>
     </div>
 
     <!-- Admin Dashboard UI -->
@@ -186,8 +213,8 @@
             <div class="bg-white/5 p-6 rounded-2xl border border-white/5">
                 <h3 class="text-xs text-yellow-500 mb-4 uppercase font-bold tracking-widest">Añadir Socio Global</h3>
                 <div class="flex flex-col gap-3">
-                    <input type="text" id="newPartnerName" class="input-field" placeholder="Nombre">
-                    <input type="text" id="newPartnerPass" class="input-field" placeholder="Password">
+                    <input type="text" id="newPartnerName" class="input-field" placeholder="Nombre de Usuario">
+                    <input type="text" id="newPartnerPass" class="input-field" placeholder="Password de Acceso">
                     <button id="addPartnerBtn" onclick="addPartner()" class="btn-lion py-2 text-xs">Registrar en Nube</button>
                 </div>
             </div>
@@ -227,17 +254,17 @@
         </div>
     </div>
 
-    <div id="debugLog">Iniciando sistema...</div>
+    <div id="debugLog">Conectando...</div>
 
     <script>
-        // CONFIGURACIÓN SUPABASE - CREDENCIALES ACTUALIZADAS
-        const SB_URL = "https://flxpuiwjivmahkzwjhdf.supabase.co";
-        const SB_PUB_KEY = "sb_publishable_0-44Ngsm9s7yAqaiszXCxg_6O_Kg9Oa";
-        const SB_SEC_KEY = "sb_secret_Ebt_c_GkAH79WnvlhN7EBw_38nHDkoa"; // Secret Key incluida
-        
-        // Inicialización con Public Key (estándar para apps cliente)
-        const _supabase = supabase.createClient(SB_URL, SB_PUB_KEY);
+        // CONFIGURACIÓN ACTUALIZADA POR EL USUARIO
+        const DEFAULT_URL = "https://ymacrmetlngaapfnwqqv.supabase.co";
+        const DEFAULT_KEY = "sb_publishable_0-44Ngsm9s7yAqaiszXCxg_6O_Kg9Oa";
 
+        let SB_URL = localStorage.getItem('LTS_SB_URL') || DEFAULT_URL;
+        let SB_PUB_KEY = localStorage.getItem('LTS_SB_KEY') || DEFAULT_KEY;
+        
+        let _supabase = null;
         const ADMIN_CREDENTIALS = { user: 'LTS-L10N2', pass: '2004' };
         let partners = [];
         let currentLoggedPartner = null;
@@ -259,21 +286,21 @@
                     else dot.classList.remove('syncing');
                 }
             });
+            const addBtn = document.getElementById('addPartnerBtn');
+            if(addBtn) addBtn.disabled = isSyncing;
         }
 
-        // --- SISTEMA DE TIEMPO REAL ---
-        function setupRealtime() {
-            _supabase
-                .channel('global-sync')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'partners' }, payload => {
-                    log('Cambio detectado en Supabase, sincronizando...');
-                    fetchInitialData(); 
-                })
-                .subscribe();
+        function initSupabase() {
+            try {
+                _supabase = supabase.createClient(SB_URL, SB_PUB_KEY);
+                log('Terminal enlazada a: ' + SB_URL);
+            } catch (e) {
+                log('Error de enlace: ' + e.message);
+            }
         }
 
         async function fetchInitialData() {
-            log('Descargando datos de la nube...');
+            if (!_supabase) return;
             try {
                 const { data, error } = await _supabase
                     .from('partners')
@@ -281,33 +308,48 @@
                     .order('id', { ascending: true });
                 
                 if (error) {
-                    log('Error de descarga: ' + error.message);
+                    if(error.message.includes('API key') || error.message.includes('relation')) {
+                        log("ERROR DE NUBE: " + error.message);
+                        // No mostramos el modal automáticamente si es error de tabla (relation)
+                        // solo si es error de API Key.
+                        if(error.message.includes('API key')) document.getElementById('configModal').style.display = 'flex';
+                    }
                     throw error;
                 }
 
                 if (data) {
                     partners = data;
-                    localStorage.setItem('lts_cache_v6', JSON.stringify(partners));
+                    localStorage.setItem('lts_cache_v10', JSON.stringify(partners));
                     refreshUI();
-                    log('Sincronización OK.');
+                    log('Sincronización global completa.');
                 }
             } catch (e) {
-                log('Fallo de red: ' + e.message);
+                log('Fallo en nube: ' + e.message);
             }
         }
 
         async function loadData() {
             document.getElementById('loader').style.display = 'flex';
+            initSupabase();
             try {
                 await fetchInitialData();
-                setupRealtime();
+                _supabase.channel('global-sync').on('postgres_changes', { event: '*', schema: 'public', table: 'partners' }, fetchInitialData).subscribe();
             } catch (err) {
-                log('Usando caché local (offline)');
-                partners = JSON.parse(localStorage.getItem('lts_cache_v6')) || [];
+                partners = JSON.parse(localStorage.getItem('lts_cache_v10')) || [];
             } finally {
                 document.getElementById('loader').style.display = 'none';
                 refreshUI();
             }
+        }
+
+        function applyManualConfig() {
+            const url = document.getElementById('manualUrl').value.trim();
+            const key = document.getElementById('manualKey').value.trim();
+            if(!url || !key) return alert("Por favor, ingresa tanto la URL como la Clave.");
+            
+            localStorage.setItem('LTS_SB_URL', url);
+            localStorage.setItem('LTS_SB_KEY', key);
+            location.reload();
         }
 
         function refreshUI() {
@@ -323,30 +365,21 @@
 
         async function saveData(partnerObj) {
             setSyncing(true);
-            log('Enviando a Supabase...');
+            log('Transmitiendo...');
             try {
                 const { error } = await _supabase
                     .from('partners')
                     .upsert({
-                        id: Number(partnerObj.id),
+                        id: partnerObj.id,
                         name: partnerObj.name,
                         pass: partnerObj.pass,
                         recommendations: partnerObj.recommendations
-                    });
+                    }, { onConflict: 'id' });
                 
-                if (error) {
-                    log('Error Supabase: ' + error.message);
-                    if(error.message.includes('policy')) {
-                        alert("AVISO: Revisa las políticas RLS en Supabase para permitir acceso anónimo a la tabla 'partners'.");
-                    }
-                    throw error;
-                }
-                
-                log('Guardado Correcto.');
-                fetchInitialData(); 
+                if (error) throw error;
+                await fetchInitialData(); 
             } catch (err) {
-                console.error("Fallo:", err);
-                alert("ERROR: " + (err.message || "Fallo de conexión"));
+                alert(`FALLO EN TRANSMISIÓN: ${err.message}\n\nNota: Si dice "relation partners does not exist", debes crear la tabla en Supabase.`);
             } finally {
                 setSyncing(false);
             }
@@ -381,7 +414,6 @@
             const list = document.getElementById('partnersList');
             let totalComm = 0;
             list.innerHTML = '';
-
             partners.forEach((p) => {
                 const pComm = (p.recommendations || []).reduce((acc, r) => acc + (Number(r.amount) * 0.15), 0);
                 totalComm += pComm;
@@ -389,10 +421,7 @@
                 div.className = 'partner-card';
                 div.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
-                        <div>
-                            <span class="text-lg font-bold text-yellow-500 uppercase">${p.name}</span>
-                            <p class="text-[9px] text-gray-500">ID: ${p.id}</p>
-                        </div>
+                        <div><span class="text-lg font-bold text-yellow-500 uppercase">${p.name}</span></div>
                         <div class="text-right">
                             <p class="text-xl font-bold text-white">${formatCRC(pComm)}</p>
                             <button onclick="removePartner(${p.id})" class="text-[10px] text-red-500 font-bold uppercase hover:underline">Eliminar</button>
@@ -405,7 +434,7 @@
                             <option value="Bloqueo">Bloqueo</option>
                             <option value="Venta">Venta</option>
                         </select>
-                        <input type="number" id="amt-${p.id}" placeholder="Monto ₡" class="input-field text-xs">
+                        <input type="number" id="amt-${p.id}" placeholder="Monto" class="input-field text-xs">
                         <button onclick="addRecommendation(${p.id})" class="btn-lion text-[10px] py-2">Registrar</button>
                     </div>
                 `;
@@ -417,77 +446,49 @@
         function renderPartnerView() {
             const p = currentLoggedPartner;
             if (!p) return;
-            document.getElementById('partnerWelcomeName').innerText = `HOLA, ${p.name}`;
+            document.getElementById('partnerWelcomeName').innerText = `BIENVENIDO: ${p.name}`;
             const myComm = (p.recommendations || []).reduce((acc, r) => acc + (Number(r.amount) * 0.15), 0);
             document.getElementById('myCommissions').innerText = formatCRC(myComm);
-            
             const history = document.getElementById('partnerHistory');
-            history.innerHTML = (p.recommendations && p.recommendations.length) ? '' : '<p class="text-gray-600 text-xs italic text-center">Sin actividad registrada.</p>';
-            
+            history.innerHTML = (p.recommendations && p.recommendations.length) ? '' : '<p class="text-gray-600 text-xs italic text-center">Sin actividad en la nube.</p>';
             if(p.recommendations) {
                 [...p.recommendations].reverse().forEach(r => {
-                    const item = document.createElement('div');
-                    item.className = 'flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 mb-2';
-                    item.innerHTML = `
-                        <div class="flex flex-col">
-                            <b class="text-yellow-500 text-sm uppercase">${r.client}</b>
-                            <span class="text-[9px] text-gray-500 uppercase">${r.type} | ${r.date}</span>
-                        </div>
-                        <span class="text-green-400 font-bold text-sm">+${formatCRC(r.amount * 0.15)}</span>
-                    `;
-                    history.appendChild(item);
+                    history.innerHTML += `
+                        <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 mb-2">
+                            <div class="flex flex-col"><b class="text-yellow-500 text-sm uppercase">${r.client}</b><span class="text-[9px] text-gray-500 uppercase">${r.type}</span></div>
+                            <span class="text-green-400 font-bold text-sm">+${formatCRC(r.amount * 0.15)}</span>
+                        </div>`;
                 });
             }
         }
 
         async function addPartner() {
-            const nameInput = document.getElementById('newPartnerName');
-            const passInput = document.getElementById('newPartnerPass');
-            if (!nameInput.value || !passInput.value) return;
-            
-            const newPartner = { 
-                id: Math.floor(Date.now() / 1000), 
-                name: nameInput.value.trim(), 
-                pass: passInput.value.trim(), 
-                recommendations: [] 
-            };
-            
-            await saveData(newPartner);
-            nameInput.value = ''; passInput.value = '';
+            const name = document.getElementById('newPartnerName').value.trim();
+            const pass = document.getElementById('newPartnerPass').value.trim();
+            if (!name || !pass) return alert("Completa los datos del nuevo socio.");
+            await saveData({ id: Math.floor(Date.now() / 1000), name, pass, recommendations: [] });
+            document.getElementById('newPartnerName').value = ''; document.getElementById('newPartnerPass').value = '';
         }
 
         async function addRecommendation(partnerId) {
-            const clientInput = document.getElementById(`client-${partnerId}`);
-            const amountInput = document.getElementById(`amt-${partnerId}`);
+            const client = document.getElementById(`client-${partnerId}`).value;
+            const amount = parseFloat(document.getElementById(`amt-${partnerId}`).value);
             const type = document.getElementById(`type-${partnerId}`).value;
-            const amount = parseFloat(amountInput.value);
-            
-            if (!clientInput.value || isNaN(amount)) return;
-            
+            if (!client || isNaN(amount)) return alert("Ingresa cliente y monto válido.");
             const p = partners.find(ptr => ptr.id == partnerId);
             if (p) {
-                const newRec = { 
-                    client: clientInput.value.trim(), 
-                    type, 
-                    amount, 
-                    date: new Date().toLocaleDateString('es-CR') 
-                };
-                const updatedPartner = { ...p, recommendations: [...(p.recommendations || []), newRec] };
-                await saveData(updatedPartner);
-                clientInput.value = ''; amountInput.value = '';
+                const updated = { ...p, recommendations: [...(p.recommendations || []), { client, type, amount, date: new Date().toLocaleDateString() }] };
+                await saveData(updated);
             }
         }
 
         async function removePartner(id) {
-            if(confirm("¿Eliminar socio permanentemente?")) {
+            if(confirm("¿Seguro que deseas eliminar a este socio del sistema global?")) {
                 setSyncing(true);
                 const { error } = await _supabase.from('partners').delete().eq('id', id);
                 setSyncing(false);
-                if (error) {
-                    log('Error al borrar: ' + error.message);
-                } else {
-                    fetchInitialData();
-                }
+                if (!error) fetchInitialData();
+                else alert("Error: " + error.message);
             }
         }
 
@@ -498,23 +499,14 @@
         let dots = [];
         function initCanvas() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            dots = Array.from({length: 30}, () => ({
-                x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-                vx: (Math.random() - 0.5) * 0.1, vy: (Math.random() - 0.5) * 0.1, s: Math.random() * 2
-            }));
+            dots = Array.from({length: 30}, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, vx: (Math.random() - 0.5) * 0.1, vy: (Math.random() - 0.5) * 0.1, s: Math.random() * 2 }));
         }
         function drawCanvas() {
             ctx.clearRect(0,0,canvas.width, canvas.height);
             ctx.fillStyle = "rgba(255, 204, 0, 0.2)";
-            dots.forEach(d => {
-                d.x += d.vx; d.y += d.vy;
-                if(d.x < 0 || d.x > canvas.width) d.vx *= -1;
-                if(d.y < 0 || d.y > canvas.height) d.vy *= -1;
-                ctx.beginPath(); ctx.arc(d.x, d.y, d.s, 0, Math.PI*2); ctx.fill();
-            });
+            dots.forEach(d => { d.x += d.vx; d.y += d.vy; if(d.x < 0 || d.x > canvas.width) d.vx *= -1; if(d.y < 0 || d.y > canvas.height) d.vy *= -1; ctx.beginPath(); ctx.arc(d.x, d.y, d.s, 0, Math.PI*2); ctx.fill(); });
             requestAnimationFrame(drawCanvas);
         }
-
         window.onload = () => { initCanvas(); drawCanvas(); loadData(); };
         window.addEventListener('resize', initCanvas);
     </script>
